@@ -8,7 +8,7 @@ This repository contains the code and datasets used to model the effects of chem
 using a Bayesian Neural Ordinary Differential Equations (Neural ODEs) framework coupled with 
 Toxicokinetic-Toxicodynamic (TKTD) models.
 
-## 📖 Citation
+## Citation
 
 If you use this code, the models, or the datasets in your research, please
 cite the original article published in *PLOS Computational Biology*:
@@ -20,7 +20,7 @@ DOI: [10.1371/journal.pcbi.1013681](https://doi.org/10.1371/journal.pcbi.1013681
 
 ---
 
-## 📂 Repository Structure (Current R Implementation)
+## Repository Structure (Current R Implementation)
 
 The current version of the repository provides the exact R scripts used to generate the results and figures presented in the paper.
 
@@ -37,6 +37,7 @@ The current version of the repository provides the exact R scripts used to gener
  ┃ ┗ 📜 ...
  ┣ 📂 img/             # Output directory for generated prediction plots
  ┗ 📜 README.md
+```
 
 # Using neural ordinary differential equations to predict chemical mixture effects on survival
 

@@ -1,8 +1,48 @@
-# Maxim TK NeuralODEs TD
+# Maxim TK NeuralODEs TD - `maxim_TK_NeuralODEs_TD`
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22705948.svg)](https://doi.org/10.5281/zenodo.22705948)
+[![Paper](https://img.shields.io/badge/Published_in-PLOS_Comp_Biol-blue)](https://doi.org/10.1371/journal.pcbi.1013681)
+[![Status](https://img.shields.io/badge/Status-Active_Development-brightgreen)](#)
+
+This repository contains the code and datasets used to model the effects of chemical mixtures on survival 
+using a Bayesian Neural Ordinary Differential Equations (Neural ODEs) framework coupled with 
+Toxicokinetic-Toxicodynamic (TKTD) models.
+
+## 📖 Citation
+
+If you use this code, the models, or the datasets in your research, please
+cite the original article published in *PLOS Computational Biology*:
+
+> **Baudrot, V., Cedergreen, N., Kleiber, T., Gergs, A., & Charles, S. (2025).
+A Bayesian neural ordinary differential equations framework to study the effects 
+of chemical mixtures on survival.** *PLoS Computational Biology, 21(11), e1013681*.
+DOI: [10.1371/journal.pcbi.1013681](https://doi.org/10.1371/journal.pcbi.1013681)
+
+---
+
+## 📂 Repository Structure (Current R Implementation)
+
+The current version of the repository provides the exact R scripts used to generate the results and figures presented in the paper.
+
+```text
+📦 maxim_TK_NeuralODEs_TD
+ ┣ 📂 R/               # Core R scripts for Bayesian TKTD and Neural ODE models
+ ┃ ┣ 📜 Bayes_TKNNTD.R # Main script for the Neural ODE TKTD model
+ ┃ ┣ 📜 Bayes_TKTD_n.R # Baseline TKTD models
+ ┃ ┣ 📜 data_summary.R # Scripts for data exploration and summary
+ ┃ ┗ 📜 ...            # Various model architectures (ReLU, exponential, etc.)
+ ┣ 📂 data/            # Cleaned experimental and artificial datasets
+ ┃ ┣ 📜 MaXim__raw_datasets__set1_CLEAN.csv
+ ┃ ┣ 📜 data_artificial_additive.csv
+ ┃ ┗ 📜 ...
+ ┣ 📂 img/             # Output directory for generated prediction plots
+ ┗ 📜 README.md
 
 # Using neural ordinary differential equations to predict chemical mixture effects on survival
 
-This is the companion repository for the paper *[Using neural ordinary differential equations to predict chemical mixture effects on survival](/paper.pdf)* by [Virgile Baudrot](https://juanmc2005.github.io/), Nina Cedergreen, Thomas Kleiber, André Gergs and Sandrine Charles.
+This is the companion repository for the paper *[Using neural ordinary differential 
+equations to predict chemical mixture effects on survival](/paper.pdf)*
+by Virgile Baudrot, Nina Cedergreen, Thomas Kleiber, André Gergs and Sandrine Charles.
 
 > Plant Protection Products (PPP) are formulated to maximise their efficacy to control target pest species, including mixtures of active substances. 
 Non-target species are likely exposed to mixtures of PPP due to their combined use within PPP formulations. More significantly, these species may encounter untested mixtures resulting from different uses, as PPP may be applied at different locations and timings in the landscape. PPP thus undergo various degradation processes, resulting in potentially countless mixture exposure profiles.
@@ -90,14 +130,15 @@ scp -r run_*.R root@$mip:~/
 ## Citation
 
 ```bibtex
-@article{baudrot2024TKTDNeural,
-  author={Baudrot, Virgile and Cedergreen, Nina and Kleiber, Thomas and Gergs, André and Charles, Sandrine},
-  title={{Using neural ordinary differential equations to predict chemical mixture effects on survival}}, 
-  year={2024},
-  volume={},
-  number={},
-  pages={},
-  doi={}
+@article{baudrot2025bayesian,
+  title={A Bayesian neural ordinary differential equations framework to study the effects of chemical mixtures on survival},
+  author={Baudrot, Virgile and Cedergreen, Nina and Kleiber, Thomas and Gergs, Andr{\'e} and Charles, Sandrine},
+  journal={PLoS Computational Biology},
+  volume={21},
+  number={11},
+  pages={e1013681},
+  year={2025},
+  publisher={Public Library of Science San Francisco, CA USA}
 }
 ```
 

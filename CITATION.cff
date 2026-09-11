@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "maxim_TK_NeuralODEs_TD"
+authors:
+  - family-names: "Baudrot"
+    given-names: "Virgile"
+  - family-names: "Cedergreen"
+    given-names: "Nina"
+  - family-names: "Kleiber"
+    given-names: "Thomas"
+  - family-names: "Gergs"
+    given-names: "André"
+  - family-names: "Charles"
+    given-names: "Sandrine"
+version: 1.0.0
+url: "https://github.com/virgile-baudrot/maxim_tk_neuralodes_td"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Baudrot"
+      given-names: "Virgile"
+    - family-names: "Cedergreen"
+      given-names: "Nina"
+    - family-names: "Kleiber"
+      given-names: "Thomas"
+    - family-names: "Gergs"
+      given-names: "André"
+    - family-names: "Charles"
+      given-names: "Sandrine"
+  title: "A Bayesian neural ordinary differential equations framework to study the effects of chemical mixtures on survival"
+  journal: "PLOS Computational Biology"
+  year: 2025
+  volume: 21
+  issue: 11
+  doi: "10.1371/journal.pcbi.1013681"

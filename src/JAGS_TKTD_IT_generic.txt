@@ -1,0 +1,102 @@
+model {
+  ## =====================================================================
+  ## Modèle TKTD-IT générique : TK multi-composés -> pont (MLP) -> TD (IT)
+  ##
+  ## Le pont D = g(D_1, ..., D_nX) est un perceptron multicouche décrit
+  ## entièrement par les DONNÉES (voir make_bridge_data() dans le script R) :
+  ##   n_layer        : nombre de couches affines (1 = modèle linéaire a + b.D_)
+  ##   M              : largeur max (>= n_X et >= toutes les couches cachées)
+  ##   W_mask[l,k,j]  : 1 si la connexion j (couche l-1) -> k (couche l) existe
+  ##   b_mask[l,k]    : 1 si le biais du neurone k de la couche l existe
+  ##   neg_slope[l]   : activation après la couche l : h = max(z, neg_slope * z)
+  ##                    0 = ReLU, 1 = identité, 0.01 = leaky ReLU
+  ##   out_exp        : 1 -> D = exp(z_sortie) (D > 0), 0 -> D = z_sortie
+  ##   alpha_split    : 0 -> alpha global ; 1 -> alpha_j par composé,
+  ##                    combinés par le MÊME réseau que les dommages
+  ##   alpha_out_exp  : (split) 1 -> alpha = exp(z_sortie), 0 -> alpha = z_sortie
+  ## =====================================================================
+
+  ##------------------------------------------------------------- priors
+  ## -- TOXICOKINETICS - TK
+  for (j in 1:n_X) {
+    kd_log10[j] ~ dnorm(kd_meanlog10[j], 1 / kd_sdlog10[j]^2)
+    kd[j] <- 10^kd_log10[j]
+  }
+
+  ## -- TK-TD BRIDGE (poids hors masque = tirages du prior, sans effet)
+  for (l in 1:n_layer) {
+    for (k in 1:M) {
+      b_raw[l,k] ~ dnorm(0.0, prec_w)
+      b[l,k] <- b_raw[l,k] * b_mask[l,k]
+      for (j in 1:M) {
+        W_raw[l,k,j] ~ dnorm(0.0, prec_w)
+        W[l,k,j] <- W_raw[l,k,j] * W_mask[l,k,j]
+      }
+    }
+  }
+
+  ## -- TOXICODYNAMICS - TD
+  hb_log10 ~ dnorm(hb_meanlog10, 1 / hb_sdlog10^2)
+  hb <- ifelse(hb_value == 0, hb_valueFIXED, 10^hb_log10)
+
+  beta_log10 ~ dunif(beta_minlog10, beta_maxlog10)
+  beta <- 10^beta_log10
+
+  for (j in 1:n_alpha) {
+    alpha_log10[j] ~ dnorm(alpha_meanlog10[j], 1 / alpha_sdlog10[j]^2)
+  }
+  ## alpha "split" : les seuils par composé traversent le même pont que D_
+  for (j in 1:M) {
+    ha[1,j] <- in_mask[j] * 10^alpha_log10[alpha_idx[j]]
+  }
+  for (l in 1:n_layer) {
+    for (k in 1:M) {
+      za[l,k] <- inprod(W[l,k,1:M], ha[l,1:M]) + b[l,k]
+      ha[l+1,k] <- max(za[l,k], neg_slope[l] * za[l,k])
+    }
+  }
+  ## alpha_out_exp = 0 reproduit l'ancien script "split" : alpha = a + b.alpha_j
+  alpha_net <- ifelse(alpha_out_exp == 1, exp(za[n_layer,1]), za[n_layer,1])
+  alpha <- max(ifelse(alpha_split == 1, alpha_net, 10^alpha_log10[1]), 1e-10)
+
+  ##--------------------------------------------------------------- model
+  for (i in 1:n_data) {
+    ## TK : dommage réduit par composé (exposition constante)
+    ## X est complété par des 0 jusqu'à M colonnes -> neurones fictifs nuls
+    for (j in 1:M) {
+      h[i,1,j] <- X[i,j] * (1 - exp(-kd[kd_idx[j]] * time[i]))
+    }
+    ## Pont : propagation avant du MLP
+    for (l in 1:n_layer) {
+      for (k in 1:M) {
+        z[i,l,k] <- inprod(W[l,k,1:M], h[i,l,1:M]) + b[l,k]
+        h[i,l+1,k] <- max(z[i,l,k], neg_slope[l] * z[i,l,k])
+      }
+    }
+    D[replicate_ID[i], time_ID[i]] <- ifelse(out_exp == 1,
+                                             exp(z[i,n_layer,1]),
+                                             z[i,n_layer,1])
+
+    ## TD : mort individuelle (IT)
+    D_max[replicate_ID[i], time_ID[i]] <- max(D[replicate_ID[i], 1:time_ID[i]])
+    D_pos[i] <- max(D_max[replicate_ID[i], time_ID[i]], 0)   # D >= 0 garanti
+    F[i] <- D_pos[i]^beta / (D_pos[i]^beta + alpha^beta)
+
+    psurv_pred[i] <- exp(-hb * time[i]) * (1 - F[i])
+
+    ## positivité de psurv pour la division
+    psurv[i] <- max(psurv_pred[i], 1e-10)
+    ## 0 < ratio < 1 (JAGS n'accepte pas p = 1)
+    ratio[i] <- min(max(psurv[i] / psurv[i_prec[i]], 1e-10), 1 - 1e-10)
+
+    Nsurv[i] ~ dbin(ratio[i], Nprec[i])
+
+    ## ---------------------------------------------------- generated data
+    Nsurv_ppc[i] ~ dbin(ratio[i], Nprec[i])
+  }
+  ## initialisation nécessaire pour utiliser Nsurv_sim[i-1]
+  Nsurv_sim[1] ~ dbin(ratio[1], Nprec[1])
+  for (i in 2:n_data) {
+    Nsurv_sim[i] ~ dbin(ratio[i], ifelse(i == i_prec[i], Nprec[i], Nsurv_sim[i-1]))
+  }
+}

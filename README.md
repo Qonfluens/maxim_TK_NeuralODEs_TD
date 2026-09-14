@@ -83,35 +83,21 @@ Copy JAGS models:
 
 ```shell
 scp -r src/JAGS_TKTD_IT_n.txt root@$MIP:~/src/
-scp -r src/JAGS_TKTD_IT_n_exp.txt root@$MIP:~/src/
-scp -r src/JAGS_TKTD_IT_nn_n_exp.txt root@$MIP:~/src/
-scp -r src/JAGS_TKTD_IT_nn_ReLU_n_exp.txt root@$MIP:~/src/
-scp -r src/JAGS_TKTD_IT_nn_ReLU_nn_ReLU_n_exp.txt root@$MIP:~/src/
-scp -r src/JAGS_TKTD_IT_nn_ReLU_nn_ReLU_nn_ReLU_n_exp.txt root@$MIP:~/src/
+...
 ```
 
 Copy R scripts:
 
 ```shell
 scp -r Bayes_TKTD_n.R root@$MIP:~/
-scp -r Bayes_TKTD_n_exp.R root@$MIP:~/
-scp -r Bayes_TKTD_nn_n_exp.R root@$MIP:~/
-scp -r Bayes_TKTD_nn_ReLU_n_exp.R root@$MIP:~/
-scp -r Bayes_TKTD_nn_ReLU_nn_ReLU_n_exp.R root@$MIP:~/
-scp -r Bayes_TKTD_nn_ReLU_nn_ReLU_nn_ReLU_n_exp.R root@$MIP:~/
+...
 ```
 
 Copy Data:
 
 ```shell
 scp -r data/data_artificial_synergism.csv root@$MIP:~/data/
-scp -r data/data_artificial_antagonism.csv root@$MIP:~/data/
-scp -r data/data_artificial_additive.csv root@$MIP:~/data/
-
-scp -r data/MaXim__raw_datasets__set1_CLEAN.csv root@$MIP:~/data/
-scp -r data/MaXim__raw_datasets__set2_CLEAN.csv root@$MIP:~/data/
-scp -r data/MaXim__raw_datasets__set3_CLEAN.csv root@$MIP:~/data/
-scp -r data/MaXim__raw_datasets__set4_CLEAN.csv root@$MIP:~/data/
+...
 ```
 
 Copy run files:

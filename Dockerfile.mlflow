@@ -17,9 +17,22 @@
 #     ./run/reproduce_paper.sh
 FROM tktd-neuralodes:latest
 
+# build-essential: compiler toolchain needed to build the 'fs' R package
+# (and others) from source. libgit2-dev: needed to build 'git2r'. Both are
+# transitive dependencies of the 'mlflow' R package, which has no prebuilt
+# Debian package.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
         libcurl4-openssl-dev \
         libssl-dev \
+        libgit2-dev \
+        zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN R -e "install.packages('mlflow', repos='https://cran.rstudio.com/')"
+# The trailing `&& Rscript -e 'library(mlflow)'` is a real post-install
+# check: without it, a failed CRAN install wouldn't fail this `docker
+# build` step at all (R's own exit code stays 0), silently producing an
+# image that looks fine but is missing mlflow -- which is exactly what
+# happened on the first version of this file.
+RUN R -e "install.packages('mlflow', repos='https://cran.rstudio.com/')" \
+    && Rscript -e 'library(mlflow)'

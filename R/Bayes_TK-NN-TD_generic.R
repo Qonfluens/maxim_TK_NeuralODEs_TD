@@ -298,6 +298,14 @@ fit_TKTD_bayes <- function(
     mlflow_tracking    = NULL,
     mlflow_experiment  = "TKTD-NeuralODEs"
 ) {
+    ## Truthy check tolerant of TRUE/FALSE *and* 1/0 (numeric or integer):
+    ## isTRUE(1L) is FALSE in base R (it requires identical() to logical
+    ## TRUE), which silently forced alpha_out_exp/alpha_activation to 0
+    ## whenever they arrived as plain integers from the CLI (--alpha-out-exp
+    ## 1 --alpha-activation 1) instead of R logicals. Use this everywhere
+    ## a flag might come in as 0/1 rather than FALSE/TRUE.
+    .flag <- function(x) isTRUE(x) || (is.numeric(x) && length(x) == 1 && !is.na(x) && x == 1)
+
     is_generic <- identical(bridge, "generic")
 
     if (is_generic) {
@@ -315,7 +323,7 @@ fit_TKTD_bayes <- function(
         }
         out_tag <- sprintf(
             "JAGS_TKTD_IT_generic_L%d_M%d_out%d_alphasplit%d_aact%d",
-            bridge_data$n_layer, bridge_data$M, out_exp, as.integer(isTRUE(alpha_split)), as.integer(isTRUE(alpha_activation))
+            bridge_data$n_layer, bridge_data$M, out_exp, as.integer(.flag(alpha_split)), as.integer(.flag(alpha_activation))
         )
     } else {
         if (!bridge %in% names(BRIDGE_REGISTRY)) {
@@ -341,7 +349,7 @@ fit_TKTD_bayes <- function(
     ## file (the alpha_split branch is evaluated unconditionally there), so
     ## the prior must always be supplied there as a vector of size n_X, even
     ## when alpha_split == FALSE (only alpha_log10[1] is then used).
-    if (isTRUE(alpha_split) || is_generic) {
+    if (.flag(alpha_split) || is_generic) {
         alpha_meanlog10_ <- rep(alpha_meanlog10, length.out = N_EXPOSURE)
         alpha_sdlog10_   <- rep(alpha_sdlog10,   length.out = N_EXPOSURE)
     } else {
@@ -361,9 +369,9 @@ fit_TKTD_bayes <- function(
             kd_idx = bridge_data$kd_idx, in_mask = bridge_data$in_mask, alpha_idx = bridge_data$alpha_idx,
             prec_w = bridge_data$prec_w,
             out_exp = out_exp,
-            alpha_split = as.integer(isTRUE(alpha_split)),
-            alpha_out_exp = as.integer(isTRUE(alpha_out_exp)),
-            alpha_activation = as.integer(isTRUE(alpha_activation))
+            alpha_split = as.integer(.flag(alpha_split)),
+            alpha_out_exp = as.integer(.flag(alpha_out_exp)),
+            alpha_activation = as.integer(.flag(alpha_activation))
         )
     }
 
@@ -434,9 +442,9 @@ fit_TKTD_bayes <- function(
                 hidden_layers = paste(hidden_layers, collapse = ","),
                 n_layer = bridge_data$n_layer, m = bridge_data$M,
                 neg_slope = paste(neg_slope, collapse = ","),
-                out_exp = out_exp, alpha_split = as.integer(isTRUE(alpha_split)),
-                alpha_out_exp = as.integer(isTRUE(alpha_out_exp)),
-                alpha_activation = as.integer(isTRUE(alpha_activation)),
+                out_exp = out_exp, alpha_split = as.integer(.flag(alpha_split)),
+                alpha_out_exp = as.integer(.flag(alpha_out_exp)),
+                alpha_activation = as.integer(.flag(alpha_activation)),
                 prec_w = prec_w
             ))
         } else {

@@ -1,19 +1,40 @@
 model {
   ## =====================================================================
-  ## Modèle TKTD-IT générique : TK multi-composés -> pont (MLP) -> TD (IT)
+  ## Generic TKTD-IT model: multi-compound TK -> bridge (MLP) -> TD (IT)
   ##
-  ## Le pont D = g(D_1, ..., D_nX) est un perceptron multicouche décrit
-  ## entièrement par les DONNÉES (voir make_bridge_data() dans le script R) :
-  ##   n_layer        : nombre de couches affines (1 = modèle linéaire a + b.D_)
-  ##   M              : largeur max (>= n_X et >= toutes les couches cachées)
-  ##   W_mask[l,k,j]  : 1 si la connexion j (couche l-1) -> k (couche l) existe
-  ##   b_mask[l,k]    : 1 si le biais du neurone k de la couche l existe
-  ##   neg_slope[l]   : activation après la couche l : h = max(z, neg_slope * z)
-  ##                    0 = ReLU, 1 = identité, 0.01 = leaky ReLU
-  ##   out_exp        : 1 -> D = exp(z_sortie) (D > 0), 0 -> D = z_sortie
-  ##   alpha_split    : 0 -> alpha global ; 1 -> alpha_j par composé,
-  ##                    combinés par le MÊME réseau que les dommages
-  ##   alpha_out_exp  : (split) 1 -> alpha = exp(z_sortie), 0 -> alpha = z_sortie
+  ## The bridge D = g(D_1, ..., D_nX) is a multilayer perceptron fully
+  ## described by DATA (built on the R side by .build_generic_bridge_data()
+  ## in R/Bayes_TK-NN-TD_generic.R):
+  ##   n_layer        : number of affine layers (1 = linear bridge a + b.D_,
+  ##                    2 = a bridge with one hidden layer, etc. -- NO depth
+  ##                    limit)
+  ##   M              : shared width (>= n_X and >= every layer, including
+  ##                    the output layer which is always 1)
+  ##   W_mask[l,k,j]  : 1 if connection j (layer l-1) -> k (layer l) exists
+  ##   b_mask[l,k]    : 1 if the bias of neuron k in layer l exists
+  ##   neg_slope[l]   : activation after layer l: h = max(z, neg_slope*z)
+  ##                    0 = ReLU, 1 = identity, 0.01 = leaky ReLU, etc.
+  ##   out_exp        : 1 -> D = exp(output) (D > 0), 0 -> D = raw output
+  ##   alpha_split    : 0 -> global alpha (alpha_log10[1]); 1 -> one alpha_j
+  ##                    per compound, combined by the SAME network (same
+  ##                    W/b) as the damage bridge -- reproduces the "split"
+  ##                    convention of the repo (Bayes_TK(NN|linear)TD_split.R)
+  ##   alpha_out_exp  : (if alpha_split == 1) 1 -> alpha = exp(output),
+  ##                    0 -> alpha = raw output
+  ##   alpha_activation : 1 -> the alpha branch uses the same neg_slope
+  ##                    activation as the D branch at every intermediate
+  ##                    layer (default); 0 -> the alpha branch stays purely
+  ##                    affine at every layer, whatever neg_slope says. The
+  ##                    original repo's NN-split script (Bayes_TKNNTD_split.R)
+  ##                    applies ReLU to the D branch but NOT to the alpha
+  ##                    branch despite sharing the same weights; set
+  ##                    alpha_activation = 0 to reproduce that exactly.
+  ##   kd_idx[j], in_mask[j], alpha_idx[j] : copy/mask the n_X real exposure
+  ##                    columns onto the M columns (zero-padded beyond n_X)
+  ##
+  ## alpha_log10 is always declared for 1:n_X (never a separate 'n_alpha'
+  ## size): the alpha_split branch is evaluated unconditionally (static JAGS
+  ## graph), so alpha_idx can reference up to n_X even when alpha_split == 0.
   ## =====================================================================
 
   ##------------------------------------------------------------- priors
@@ -23,7 +44,7 @@ model {
     kd[j] <- 10^kd_log10[j]
   }
 
-  ## -- TK-TD BRIDGE (poids hors masque = tirages du prior, sans effet)
+  ## -- TK-TD BRIDGE (weights outside the mask = prior draws, no effect)
   for (l in 1:n_layer) {
     for (k in 1:M) {
       b_raw[l,k] ~ dnorm(0.0, prec_w)
@@ -42,31 +63,35 @@ model {
   beta_log10 ~ dunif(beta_minlog10, beta_maxlog10)
   beta <- 10^beta_log10
 
-  for (j in 1:n_alpha) {
+  ## one alpha prior per compound (used for "split" mode; only
+  ## alpha_log10[1] is used in global mode, see below)
+  for (j in 1:n_X) {
     alpha_log10[j] ~ dnorm(alpha_meanlog10[j], 1 / alpha_sdlog10[j]^2)
   }
-  ## alpha "split" : les seuils par composé traversent le même pont que D_
+  ## "split" alpha: the per-compound thresholds go through the same bridge as D_
   for (j in 1:M) {
     ha[1,j] <- in_mask[j] * 10^alpha_log10[alpha_idx[j]]
   }
   for (l in 1:n_layer) {
     for (k in 1:M) {
       za[l,k] <- inprod(W[l,k,1:M], ha[l,1:M]) + b[l,k]
-      ha[l+1,k] <- max(za[l,k], neg_slope[l] * za[l,k])
+      ha[l+1,k] <- ifelse(alpha_activation == 1, max(za[l,k], neg_slope[l] * za[l,k]), za[l,k])
     }
   }
-  ## alpha_out_exp = 0 reproduit l'ancien script "split" : alpha = a + b.alpha_j
+  ## alpha_out_exp == 0 reproduces the old linear "split" script:
+  ## alpha = a + b.alpha_j; == 1 reproduces the neural-net "split":
+  ## alpha = exp(a + b.alpha_j)
   alpha_net <- ifelse(alpha_out_exp == 1, exp(za[n_layer,1]), za[n_layer,1])
   alpha <- max(ifelse(alpha_split == 1, alpha_net, 10^alpha_log10[1]), 1e-10)
 
   ##--------------------------------------------------------------- model
   for (i in 1:n_data) {
-    ## TK : dommage réduit par composé (exposition constante)
-    ## X est complété par des 0 jusqu'à M colonnes -> neurones fictifs nuls
+    ## TK: reduced damage per compound (constant exposure)
+    ## X is zero-padded up to M columns -> phantom neurons stay at zero
     for (j in 1:M) {
       h[i,1,j] <- X[i,j] * (1 - exp(-kd[kd_idx[j]] * time[i]))
     }
-    ## Pont : propagation avant du MLP
+    ## Bridge: MLP forward pass
     for (l in 1:n_layer) {
       for (k in 1:M) {
         z[i,l,k] <- inprod(W[l,k,1:M], h[i,l,1:M]) + b[l,k]
@@ -77,16 +102,16 @@ model {
                                              exp(z[i,n_layer,1]),
                                              z[i,n_layer,1])
 
-    ## TD : mort individuelle (IT)
+    ## TD: individual mortality (IT)
     D_max[replicate_ID[i], time_ID[i]] <- max(D[replicate_ID[i], 1:time_ID[i]])
-    D_pos[i] <- max(D_max[replicate_ID[i], time_ID[i]], 0)   # D >= 0 garanti
+    D_pos[i] <- max(D_max[replicate_ID[i], time_ID[i]], 0)   # guarantees D >= 0
     F[i] <- D_pos[i]^beta / (D_pos[i]^beta + alpha^beta)
 
     psurv_pred[i] <- exp(-hb * time[i]) * (1 - F[i])
 
-    ## positivité de psurv pour la division
+    ## keep psurv positive for the division below
     psurv[i] <- max(psurv_pred[i], 1e-10)
-    ## 0 < ratio < 1 (JAGS n'accepte pas p = 1)
+    ## 0 < ratio < 1 (JAGS does not accept p = 1)
     ratio[i] <- min(max(psurv[i] / psurv[i_prec[i]], 1e-10), 1 - 1e-10)
 
     Nsurv[i] ~ dbin(ratio[i], Nprec[i])
@@ -94,7 +119,7 @@ model {
     ## ---------------------------------------------------- generated data
     Nsurv_ppc[i] ~ dbin(ratio[i], Nprec[i])
   }
-  ## initialisation nécessaire pour utiliser Nsurv_sim[i-1]
+  ## initialization required to use Nsurv_sim[i-1] in the JAGS language
   Nsurv_sim[1] ~ dbin(ratio[1], Nprec[1])
   for (i in 2:n_data) {
     Nsurv_sim[i] ~ dbin(ratio[i], ifelse(i == i_prec[i], Nprec[i], Nsurv_sim[i-1]))

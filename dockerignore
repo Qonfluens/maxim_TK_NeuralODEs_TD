@@ -1,0 +1,8 @@
+.git
+img
+output
+*.Rproj
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata

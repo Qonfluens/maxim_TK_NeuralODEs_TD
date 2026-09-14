@@ -1,0 +1,25 @@
+# Optional derived image: adds the R 'mlflow' package on top of the core
+# tktd-neuralodes image, for the experiment tracking described in
+# DEPLOY_SCALEWAY.md section 8. Kept separate from the main Dockerfile on
+# purpose: the R 'mlflow' package has no prebuilt Debian package (unlike
+# coda/rjags/readr/dplyr in the main Dockerfile), so it must be compiled
+# from CRAN sources here -- if that ever breaks on a future r-base/CRAN
+# update, it only affects this optional layer, never the core image that
+# every other example in this repo depends on.
+#
+# Build (after building the base image):
+#   docker build -t tktd-neuralodes:latest .
+#   docker build -f Dockerfile.mlflow -t tktd-neuralodes:mlflow .
+#
+# Then use tktd-neuralodes:mlflow (instead of :latest) wherever you want a
+# run to log to MLflow, e.g.:
+#   IMAGE=tktd-neuralodes:mlflow MLFLOW_TRACKING_URI=http://host.docker.internal:5000 \
+#     ./run/reproduce_paper.sh
+FROM tktd-neuralodes:latest
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libcurl4-openssl-dev \
+        libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN R -e "install.packages('mlflow', repos='https://cran.rstudio.com/')"

@@ -1,0 +1,38 @@
+# PyTorch image for the differentiable TKTD-IT framework (python/).
+#
+# Independent of the JAGS image on purpose: this one needs no R, no JAGS and no
+# rjags, so it builds in well under a minute and stays small. Keep the JAGS
+# image around as the reference implementation -- python/validate_against_jags.R
+# needs it to prove the two agree.
+#
+# Build (from the repo root):
+#   docker build -f Dockerfile.torch -t tktd-torch:latest .
+#
+# Run all 47 fits, one per core:
+#   docker run --rm -v "$PWD/output_torch:/repo/output_torch" \
+#     tktd-torch:latest python3 python/reproduce_paper_torch.py --jobs $(nproc)
+#
+# With MLflow tracking (172.17.0.1 is the docker bridge gateway; check yours
+# with `ip addr show docker0`):
+#   docker run --rm -v "$PWD/output_torch:/repo/output_torch" \
+#     -e MLFLOW_TRACKING_URI=http://172.17.0.1:5000 \
+#     tktd-torch:latest python3 python/reproduce_paper_torch.py --jobs $(nproc)
+FROM python:3.11-slim
+
+WORKDIR /repo
+
+# CPU-only torch: these models have a few hundred parameters, so the GPU build
+# would add gigabytes of CUDA libraries for no benefit. Parallelism comes from
+# running many fits at once, one thread each.
+COPY python/requirements.txt /repo/python/requirements.txt
+RUN pip install --no-cache-dir \
+        --extra-index-url https://download.pytorch.org/whl/cpu \
+        -r /repo/python/requirements.txt \
+    && python3 -c "import torch, pandas, numpy, mlflow; print('torch', torch.__version__)"
+
+COPY . /repo
+
+# Fail fast at build time if the package cannot even be imported.
+RUN python3 -c "import sys; sys.path.insert(0, 'python'); import tktd; print('tktd package OK')"
+
+CMD ["/bin/bash"]

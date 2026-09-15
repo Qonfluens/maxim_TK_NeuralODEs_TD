@@ -1,0 +1,17 @@
+# Core framework for the differentiable TKTD-IT model.
+# CPU-only torch is enough: these models have a few hundred parameters, and the
+# batch driver gets its speed from running many fits in parallel processes, not
+# from a GPU. Install the CPU build explicitly with:
+#   pip install -r python/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.2
+numpy>=1.24
+pandas>=2.0
+
+# experiment tracking (optional: only used when MLFLOW_TRACKING_URI is set)
+mlflow>=2.9
+
+# --- for the molecular-descriptor extension (see CHEMISTRY_EXTENSION.md).
+# Not needed to reproduce the paper's 47 runs; install when you start adding
+# compound properties.
+# rdkit>=2023.9          # SMILES parsing, logP/TPSA/MW descriptors
+# torch-geometric>=2.5   # only if you go as far as a graph neural network

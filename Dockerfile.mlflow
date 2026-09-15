@@ -17,8 +17,8 @@
 #     ./run/reproduce_paper.sh
 FROM tktd-neuralodes:latest
 
-# build-essential: compiler toolchain needed to build the 'fs' R package
-# (and others) from source. libgit2-dev: needed to build 'git2r'. Both are
+# build-essential: compiler toolchain. libgit2-dev: for git2r. libuv1-dev:
+# for fs (its download/watch backend links against system libuv). All are
 # transitive dependencies of the 'mlflow' R package, which has no prebuilt
 # Debian package.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libcurl4-openssl-dev \
         libssl-dev \
         libgit2-dev \
+        libuv1-dev \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
